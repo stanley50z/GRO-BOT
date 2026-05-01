@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRO-BOT — A Smart Algae Bioreactor</title>
+<meta name="description" content="A bench-scale algal photobioreactor for indoor CO₂ sequestration. Carnegie Mellon University, 18-360/760 Design Quest: AgTech.">
+
+<!-- Fonts: Fraunces (editorial serif) + DM Sans (body) + JetBrains Mono (data) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ---------- DESIGN TOKENS ---------- */
+:root {
+  /* Palette — warm paper + forest + chlorella + bioluminescent mint */
+  --paper: #f4f1ea;
+  --paper-2: #ebe6dc;
+  --ink: #1a2e1f;          /* deep forest, primary text */
+  --ink-soft: #3d4f3f;
+  --ink-muted: #6b7a6d;
+  --rule: #d9d3c4;          /* hairline rules */
+  --algae: #5a9e5a;         /* chlorella green */
+  --algae-deep: #3e7a3e;
+  --biolum: #00c9b7;        /* bioluminescent mint accent */
+  --biolum-soft: rgba(0,201,183,0.12);
+  --amber: #c08a50;         /* from the timeline — used sparingly */
+
+  /* Typography */
+  --f-display: 'Fraunces', 'Times New Roman', serif;
+  --f-body: 'DM Sans', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Rhythm */
+  --page-pad: clamp(1.25rem, 4vw, 3rem);
+  --section-pad: clamp(4rem, 10vw, 8rem);
+  --max: 1400px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------- RESET ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  font-weight: 400;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; background: none; border: 0; cursor: pointer; color: inherit; }
+
+/* Subtle grain overlay — atmospheric, not distracting */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1000;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.15 0 0 0 0 0.1 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- NAVIGATION ---------- */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 1.5rem var(--page-pad);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.4s var(--ease), border-color 0.4s var(--ease), padding 0.4s var(--ease), backdrop-filter 0.4s var(--ease);
+  border-bottom: 1px solid transparent;
+}
+.nav.scrolled {
+  background: rgba(244, 241, 234, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--rule);
+  padding: 0.85rem var(--page-pad);
+}
+.nav-brand {
+  font-family: var(--f-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.nav-brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--algae);
+  box-shadow: 0 0 0 0 rgba(90, 158, 90, 0.5);
+  animation: pulse 2.8s var(--ease) infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(90, 158, 90, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(90, 158, 90, 0); }
+}
+.nav-links {
+  display: flex; gap: 2rem;
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.nav-links a {
+  position: relative;
+  color: var(--ink-soft);
+  transition: color 0.25s var(--ease);
+}
+.nav-links a:hover { color: var(--ink); }
+.nav-links a::after {
+  content: '';
+  position: absolute; left: 0; bottom: -4px;
+  width: 0; height: 1px;
+  background: var(--algae);
+  transition: width 0.3s var(--ease);
+}
+.nav-links a:hover::after { width: 100%; }
+
+.nav-toggle { display: none; }
+
+@media (max-width: 900px) {
+  .nav-links {
+    position: fixed;
+    top: 0; right: 0;
+    height: 100vh; width: min(75vw, 320px);
+    background: var(--paper);
+    flex-direction: column;
+    padding: 6rem 2rem 2rem;
+    gap: 1.5rem;
+    transform: translateX(100%);
+    transition: transform 0.5s var(--ease);
+    border-left: 1px solid var(--rule);
+  }
+  .nav-links.open { transform: translateX(0); }
+  .nav-toggle {
+    display: flex; flex-direction: column; gap: 5px;
+    z-index: 101; padding: 0.5rem;
+  }
+  .nav-toggle span {
+    width: 24px; height: 1.5px; background: var(--ink);
+    transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
+  }
+  .nav-toggle.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .nav-toggle.open span:nth-child(2) { opacity: 0; }
+  .nav-toggle.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+}
+
+/* ---------- SHARED LAYOUT ---------- */
+section { padding: var(--section-pad) var(--page-pad); position: relative; }
+.wrap { max-width: var(--max); margin: 0 auto; }
+
+.section-label {
+  display: flex; align-items: center; gap: 0.8rem;
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  margin-bottom: 2.5rem;
+}
+.section-label::before {
+  content: ''; width: 24px; height: 1px; background: var(--algae);
+}
+
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--algae-deep);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--f-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+h2 {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 400;
+  margin-bottom: 2rem;
+  max-width: 22ch;
+}
+h2 em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--algae-deep);
+}
+h3 {
+  font-size: clamp(1.3rem, 2.2vw, 1.65rem);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.015em;
+}
+
+p { color: var(--ink-soft); max-width: 62ch; }
+p + p { margin-top: 1rem; }
+
+.lede { font-size: clamp(1.05rem, 1.5vw, 1.22rem); line-height: 1.55; color: var(--ink); }
+
+/* ---------- HERO ---------- */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 8rem;
+  padding-bottom: 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient background gradient — very subtle, reads as atmosphere */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 20%; right: -10%;
+  width: 60vmax; height: 60vmax;
+  background: radial-gradient(circle, rgba(90,158,90,0.18) 0%, rgba(0,201,183,0.08) 40%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+  animation: drift 18s var(--ease) infinite alternate;
+}
+@keyframes drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-6%, 4%) scale(1.08); }
+}
+
+.hero-inner { position: relative; z-index: 1; max-width: var(--max); margin: 0 auto; width: 100%; }
+
+.hero-meta {
+  display: flex;
+  gap: 2.5rem;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  margin-bottom: 3.5rem;
+  flex-wrap: wrap;
+}
+.hero-meta span { display: flex; align-items: center; gap: 0.5rem; }
+.hero-meta span::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--algae);
+}
+
+.hero-title {
+  font-family: var(--f-display);
+  font-size: clamp(3.5rem, 11vw, 10rem);
+  font-weight: 300;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  margin-bottom: 2rem;
+}
+.hero-title .slash {
+  display: inline-block;
+  color: var(--algae);
+  font-weight: 300;
+  margin: 0 0.1em;
+  transform: translateY(-0.05em);
+}
+.hero-title em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--algae-deep);
+}
+
+.hero-lede {
+  font-family: var(--f-display);
+  font-size: clamp(1.15rem, 1.7vw, 1.45rem);
+  font-weight: 300;
+  line-height: 1.5;
+  max-width: 48ch;
+  color: var(--ink-soft);
+  margin-bottom: 3.5rem;
+}
+
+.hero-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule);
+}
+.hero-stats {
+  display: flex;
+  gap: clamp(2rem, 5vw, 4rem);
+  flex-wrap: wrap;
+}
+.stat .n {
+  font-family: var(--f-display);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  display: block;
+  line-height: 1;
+}
+.stat .n em { font-style: italic; color: var(--algae-deep); }
+.stat .l {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-muted);
+  margin-top: 0.5rem;
+}
+
+.scroll-cue {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-muted);
+  display: flex; align-items: center; gap: 0.75rem;
+  white-space: nowrap;
+}
+.scroll-cue .line {
+  display: inline-block;
+  width: 32px; height: 1px;
+  background: var(--ink-muted);
+  position: relative; overflow: hidden;
+}
+.scroll-cue .line::after {
+  content: ''; position: absolute; inset: 0;
+  background: var(--algae);
+  transform: translateX(-100%);
+  animation: cue 2.2s var(--ease) infinite;
+}
+@keyframes cue {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- CONTEXT SECTION ---------- */
+.context { background: var(--paper); }
+.context-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .context-grid { grid-template-columns: 1fr; } }
+
+.context-quote {
+  font-family: var(--f-display);
+  font-size: clamp(1.5rem, 2.3vw, 1.9rem);
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--ink);
+  position: relative;
+  padding-left: 2rem;
+  border-left: 2px solid var(--algae);
+}
+.context-quote em { font-style: italic; color: var(--algae-deep); }
+.context-quote cite {
+  display: block;
+  margin-top: 1.5rem;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-muted);
+}
+
+.context-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; }
+@media (max-width: 600px) { .context-facts { grid-template-columns: 1fr; } }
+
+.fact { padding-top: 1rem; border-top: 1px solid var(--rule); }
+.fact .n {
+  font-family: var(--f-display);
+  font-size: clamp(2.5rem, 4.5vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1;
+  display: block;
+}
+.fact .n sup { font-size: 0.4em; color: var(--algae-deep); vertical-align: super; margin-left: 0.2em; }
+.fact p { font-size: 0.92rem; margin-top: 0.75rem; color: var(--ink-muted); }
+
+/* ---------- CONCEPT / RESEARCH SECTION ---------- */
+.concept { background: var(--paper-2); }
+.concept-intro {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  margin-bottom: 5rem;
+}
+@media (max-width: 800px) { .concept-intro { grid-template-columns: 1fr; } }
+
+.concept-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+.ccard {
+  background: var(--paper);
+  padding: 2rem;
+  border: 1px solid var(--rule);
+  position: relative;
+  transition: transform 0.4s var(--ease), border-color 0.4s var(--ease);
+}
+.ccard:hover { transform: translateY(-4px); border-color: var(--algae); }
+.ccard .num {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  color: var(--algae-deep);
+  letter-spacing: 0.12em;
+  margin-bottom: 1.5rem;
+}
+.ccard h4 {
+  font-family: var(--f-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+.ccard p { font-size: 0.92rem; color: var(--ink-muted); }
+
+/* ---------- SYSTEM / HOW IT WORKS ---------- */
+.system { background: var(--ink); color: var(--paper); }
+.system .section-label { color: rgba(244, 241, 234, 0.55); }
+.system .section-label::before { background: var(--biolum); }
+.system h2 { color: var(--paper); }
+.system h2 em { color: var(--biolum); }
+.system p { color: rgba(244, 241, 234, 0.7); }
+.system .eyebrow { color: var(--biolum); }
+
+.system-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+@media (max-width: 900px) { .system-layout { grid-template-columns: 1fr; } }
+
+.system-diagram-wrap {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(244, 241, 234, 0.12);
+  padding: clamp(1rem, 3vw, 2rem);
+  position: relative;
+  overflow: hidden;
+}
+.system-diagram-wrap::before {
+  content: 'FIG. 01 — AIRFLOW SCHEMATIC';
+  position: absolute; top: 1rem; left: 1rem;
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  color: var(--biolum);
+  letter-spacing: 0.14em;
+}
+.system-diagram { width: 100%; height: auto; margin-top: 1.5rem; }
+
+/* SVG inline diagram styling */
+.sd-node rect, .sd-node circle {
+  fill: rgba(244, 241, 234, 0.04);
+  stroke: rgba(244, 241, 234, 0.4);
+  stroke-width: 1.2;
+  transition: fill 0.3s var(--ease), stroke 0.3s var(--ease);
+}
+.sd-node:hover rect, .sd-node:hover circle {
+  fill: rgba(0, 201, 183, 0.12);
+  stroke: var(--biolum);
+}
+.sd-node.chamber rect { fill: rgba(90, 158, 90, 0.1); stroke: var(--algae); }
+.sd-node text {
+  fill: rgba(244, 241, 234, 0.85);
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+.sd-path {
+  fill: none;
+  stroke: rgba(244, 241, 234, 0.3);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+.sd-path.active {
+  stroke: var(--biolum);
+  stroke-dasharray: 6 4;
+  animation: dash 2.5s linear infinite;
+}
+@keyframes dash { to { stroke-dashoffset: -20; } }
+.sd-arrow { fill: rgba(244, 241, 234, 0.5); }
+.sd-arrow.active { fill: var(--biolum); }
+.sd-bubble {
+  fill: var(--biolum);
+  opacity: 0.6;
+  animation: bubble 3s var(--ease) infinite;
+}
+@keyframes bubble {
+  0% { transform: translateY(0); opacity: 0.6; }
+  100% { transform: translateY(-60px); opacity: 0; }
+}
+
+.system-legend { display: grid; gap: 1.5rem; }
+.leg { padding-bottom: 1.5rem; border-bottom: 1px solid rgba(244, 241, 234, 0.12); }
+.leg:last-child { border-bottom: none; }
+.leg h4 {
+  font-family: var(--f-display);
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--paper);
+  margin-bottom: 0.5rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.leg h4 .tag {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  background: var(--biolum);
+  color: var(--ink);
+  padding: 0.15rem 0.5rem;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.leg p { font-size: 0.9rem; line-height: 1.55; }
+
+/* ---------- PROCESS TIMELINE ---------- */
+.process { background: var(--paper); }
+.process-header { margin-bottom: 4rem; display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
+@media (max-width: 800px) { .process-header { grid-template-columns: 1fr; } }
+
+.timeline {
+  position: relative;
+  padding-left: 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 10px; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--rule);
+}
+.t-item {
+  position: relative;
+  padding-left: 3.5rem;
+  padding-bottom: 3rem;
+}
+.t-item::before {
+  content: '';
+  position: absolute;
+  left: 5px; top: 0.4rem;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--algae);
+  transition: background 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.t-item:hover::before { background: var(--algae); transform: scale(1.3); }
+.t-item.active::before { background: var(--biolum); border-color: var(--biolum); }
+.t-meta {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--algae-deep);
+  margin-bottom: 0.5rem;
+}
+.t-item h4 {
+  font-family: var(--f-display);
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+.t-item p { font-size: 0.95rem; }
+
+/* ---------- OUTCOMES ---------- */
+.outcomes { background: var(--paper-2); }
+.outcomes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 3rem;
+}
+@media (max-width: 900px) { .outcomes-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .outcomes-grid { grid-template-columns: 1fr; } }
+
+.outcome {
+  background: var(--paper);
+  padding: 2.5rem 2rem;
+  transition: background 0.4s var(--ease);
+  position: relative;
+}
+.outcome:hover { background: var(--paper-2); }
+.outcome .num {
+  font-family: var(--f-display);
+  font-size: clamp(2.8rem, 4.5vw, 3.8rem);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.outcome .num em { font-style: italic; color: var(--algae-deep); font-weight: 400; }
+.outcome .num .unit {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  margin-left: 0.3rem;
+  letter-spacing: 0.08em;
+  vertical-align: baseline;
+  font-style: normal;
+}
+.outcome .l {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+.outcome p { font-size: 0.88rem; color: var(--ink-soft); }
+
+/* Comparison figure: trees vs bioreactor */
+.comparison {
+  margin-top: 5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+@media (max-width: 700px) { .comparison { grid-template-columns: 1fr; } }
+.comp-side {
+  background: var(--paper);
+  padding: 2.5rem;
+}
+.comp-side.alt { background: var(--ink); color: var(--paper); }
+.comp-side.alt h4, .comp-side.alt .comp-n { color: var(--paper); }
+.comp-side.alt p { color: rgba(244, 241, 234, 0.7); }
+.comp-side.alt .comp-l { color: var(--biolum); }
+
+.comp-l {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--algae-deep);
+  display: block;
+  margin-bottom: 1rem;
+}
+.comp-n {
+  font-family: var(--f-display);
+  font-size: clamp(2.5rem, 5vw, 3.8rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 1rem;
+  display: block;
+}
+.comp-n em { font-style: italic; color: var(--algae-deep); }
+.comp-side h4 { font-size: 1.15rem; margin-bottom: 0.5rem; }
+.comp-side p { font-size: 0.9rem; }
+
+/* ---------- GALLERY ---------- */
+.gallery { background: var(--paper); }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+  margin-top: 3rem;
+}
+.g-item {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+/* Span widths */
+.g-item.wide  { grid-column: span 8; }
+.g-item.tall  { grid-column: span 4; grid-row: span 2; }
+.g-item.half  { grid-column: span 6; }
+.g-item.full  { grid-column: span 12; }
+
+/* Aspect ratios — each tuned to its image */
+.g-item.ratio-wide   { aspect-ratio: 16 / 9; }   /* horizontal diagrams */
+.g-item.ratio-banner { aspect-ratio: 21 / 9; }   /* extra-wide diagrams */
+.g-item.ratio-photo  { aspect-ratio: 4 / 5; }    /* portrait prototype photo */
+
+@media (max-width: 800px) {
+  .g-item, .g-item.wide, .g-item.tall, .g-item.half, .g-item.full {
+    grid-column: span 12;
+    grid-row: auto;
+  }
+  .g-item.ratio-photo { aspect-ratio: 4 / 5; }
+  .g-item.ratio-wide, .g-item.ratio-banner { aspect-ratio: 16 / 10; }
+}
+
+.g-media {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.8s var(--ease);
+}
+/* Diagrams should be fully visible — contain instead of cover, on a soft background */
+.g-item.contain { background: var(--paper); }
+.g-item.contain .g-media { object-fit: contain; padding: 1.5rem; }
+
+.g-item:hover .g-media { transform: scale(1.03); }
+.g-item.contain:hover .g-media { transform: scale(1.015); }
+
+.g-caption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 1.25rem;
+  background: linear-gradient(to top, rgba(26, 46, 31, 0.92), transparent);
+  color: var(--paper);
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform 0.4s var(--ease), opacity 0.4s var(--ease);
+  pointer-events: none;
+}
+.g-item:hover .g-caption { transform: translateY(0); opacity: 1; }
+.g-caption .n {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  color: var(--biolum);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.g-caption .t {
+  font-family: var(--f-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+/* ---------- CREDITS / FOOTER ---------- */
+.credits { background: var(--ink); color: var(--paper); padding-bottom: 2rem; }
+.credits .section-label { color: rgba(244,241,234,0.55); }
+.credits .section-label::before { background: var(--biolum); }
+.credits h2 { color: var(--paper); }
+.credits h2 em { color: var(--biolum); }
+.credits p { color: rgba(244, 241, 234, 0.7); }
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  margin-top: 3.5rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgba(244, 241, 234, 0.14);
+}
+@media (max-width: 1000px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .team-grid { grid-template-columns: 1fr; } }
+
+.member .role {
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--biolum);
+  margin-bottom: 0.75rem;
+}
+.member h4 {
+  font-family: var(--f-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--paper);
+  margin-bottom: 0.5rem;
+}
+.member p { font-size: 0.9rem; line-height: 1.55; }
+
+.footline {
+  margin-top: 5rem; padding-top: 2rem;
+  border-top: 1px solid rgba(244, 241, 234, 0.14);
+  display: flex; justify-content: space-between; gap: 1.5rem;
+  flex-wrap: wrap;
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(244, 241, 234, 0.5);
+}
+.footline a {
+  color: rgba(244, 241, 234, 0.7);
+  transition: color 0.25s var(--ease);
+}
+.footline a:hover { color: var(--biolum); }
+
+/* ---------- REVEAL ANIMATIONS ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 1s var(--ease), transform 1s var(--ease);
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+.reveal.d1 { transition-delay: 0.1s; }
+.reveal.d2 { transition-delay: 0.2s; }
+.reveal.d3 { transition-delay: 0.3s; }
+.reveal.d4 { transition-delay: 0.4s; }
+
+/* Hero stagger on load */
+.hero .hero-meta, .hero .hero-title, .hero .hero-lede, .hero .hero-bottom {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: intro 1.1s var(--ease) forwards;
+}
+.hero .hero-meta { animation-delay: 0.2s; }
+.hero .hero-title { animation-delay: 0.4s; }
+.hero .hero-lede { animation-delay: 0.7s; }
+.hero .hero-bottom { animation-delay: 0.95s; }
+@keyframes intro {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced motion — respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== NAVIGATION ========== -->
+<nav class="nav" aria-label="Primary">
+  <a href="#top" class="nav-brand">
+    <span class="nav-brand-dot" aria-hidden="true"></span>
+    GRO-BOT
+  </a>
+  <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="navLinks">
+    <a href="#context">Context</a>
+    <a href="#concept">Concept</a>
+    <a href="#system">System</a>
+    <a href="#process">Process</a>
+    <a href="#outcomes">Outcomes</a>
+    <a href="#gallery">Gallery</a>
+    <a href="#credits">Credits</a>
+  </div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<header class="hero" id="top">
+  <div class="hero-inner">
+    <div class="hero-meta">
+      <span>18-360/760 Design Quest</span>
+      <span>AgTech · Spring 2026</span>
+      <span>Carnegie Mellon University</span>
+    </div>
+
+    <h1 class="hero-title">
+      GRO<span class="slash">—</span>BOT<br>
+      A <em>living</em><br>
+      bioreactor.
+    </h1>
+
+    <p class="hero-lede">
+      A bench-scale algal photobioreactor that cultivates <em>Chlorella vulgaris</em> to sequester carbon dioxide from the indoor air we breathe — turning a quiet, invisible pollutant into something observable, measurable, and alive.
+    </p>
+
+    <div class="hero-bottom">
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="n"><em>15</em>%</span>
+          <span class="l">Target CO₂ Removal</span>
+        </div>
+        <div class="stat">
+          <span class="n"><em>0.3</em> g/L/day</span>
+          <span class="l">Biomass Productivity</span>
+        </div>
+        <div class="stat">
+          <span class="n"><em>14</em> days</span>
+          <span class="l">Autonomous Runtime</span>
+        </div>
+      </div>
+      <div class="scroll-cue">
+        <span class="line" aria-hidden="true"></span>
+        Scroll to begin
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== CONTEXT ========== -->
+<section class="context" id="context">
+  <div class="wrap">
+    <div class="section-label">00 / Context</div>
+
+    <div class="context-grid">
+      <div>
+        <h2 class="reveal">
+          The air<br>indoors,<br><em>unseen</em>.
+        </h2>
+      </div>
+
+      <div>
+        <p class="lede reveal d1">
+          Humans exhale roughly one kilogram of CO₂ per day. In sealed rooms — bedrooms, home offices, classrooms — concentrations climb past 1,000 ppm within hours, past 2,500 ppm overnight. Cognitive performance drops measurably at these levels, yet the dominant tools for air quality — mechanical ventilation, HEPA filtration — either demand infrastructure or ignore CO₂ entirely.
+        </p>
+        <p class="reveal d2">
+          GRO-BOT asks a different question: can a living organism do what a filter cannot? Photosynthetic microalgae consume CO₂ faster by mass than terrestrial plants. A single desktop culture, properly maintained, can offset a meaningful fraction of a room's accumulation — silently, without ductwork, and visibly enough that residents can watch the work happen.
+        </p>
+
+        <blockquote class="context-quote reveal d3" style="margin-top: 2.5rem;">
+          The U.S. Supreme Court ruled in 2007 that CO₂ is an air pollutant under the Clean Air Act — linked to warming, and to the <em>declining performance</em> of the humans breathing it.
+          <cite>— Massachusetts v. EPA, 549 U.S. 497</cite>
+        </blockquote>
+
+        <div class="context-facts">
+          <div class="fact reveal">
+            <span class="n">2–5<sup>×</sup></span>
+            <p>EPA estimates of indoor air pollutant concentrations versus outdoor, in typical occupied spaces.</p>
+          </div>
+          <div class="fact reveal d1">
+            <span class="n">1,000<sup>ppm</sup></span>
+            <p>The CO₂ threshold above which decision-making performance statistically declines.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CONCEPT / RESEARCH ========== -->
+<section class="concept" id="concept">
+  <div class="wrap">
+    <div class="section-label">01 / Concept & Research</div>
+
+    <div class="concept-intro">
+      <h2 class="reveal">
+        Why <em>algae</em>, precisely.
+      </h2>
+      <div>
+        <p class="lede reveal d1">
+          <em>Chlorella vulgaris</em> is a single-celled freshwater green alga that has been studied since the early 1900s — first as a protein source, then as a space-station oxygen system, then as a biofuel candidate, now as a climate tool. Its appeal is specific: it doubles in hours rather than days, tolerates a wide range of conditions, and fixes CO₂ directly into biomass without specialized nutrients beyond standard fertilizer components.
+        </p>
+        <p class="reveal d2">
+          Two reactor archetypes informed our design. Open raceway ponds (as studied at Duke Marine Lab) are cheap but lose water, drift in composition, and cannot live indoors. Closed photobioreactors offer environmental control, contamination resistance, and minimal evaporation — at the cost of added complexity. GRO-BOT takes the closed path in a bubble column configuration: a transparent vertical vessel aerated from below.
+        </p>
+      </div>
+    </div>
+
+    <div class="concept-cards">
+      <article class="ccard reveal">
+        <div class="num">→ 01</div>
+        <h4>Bubble Column</h4>
+        <p>A vertical acrylic vessel aerated from the base. Rising bubbles deliver CO₂ and mix the culture without moving parts — low maintenance, low failure surface.</p>
+      </article>
+      <article class="ccard reveal d1">
+        <div class="num">→ 02</div>
+        <h4>Closed System</h4>
+        <p>Intake and exhaust air both pass through filters. Culture stays monospecific longer; contaminants and pests are excluded; evaporation is minimal over a 14-day run.</p>
+      </article>
+      <article class="ccard reveal d2">
+        <div class="num">→ 03</div>
+        <h4>Quantified Loop</h4>
+        <p>CO₂ is measured entering and leaving the chamber. For the first time in a desktop algae product, the user sees <em>how much</em> carbon the culture actually fixed.</p>
+      </article>
+      <article class="ccard reveal d3">
+        <div class="num">→ 04</div>
+        <h4>Observable</h4>
+        <p>A built-in camera time-lapses growth. A companion app exposes pH, temperature, humidity, airflow. The culture is legible — not hidden behind a white plastic shell.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SYSTEM DIAGRAM ========== -->
+<section class="system" id="system">
+  <div class="wrap">
+    <div class="section-label">02 / System Design</div>
+
+    <div class="concept-intro" style="margin-bottom: 4rem;">
+      <h2 class="reveal">
+        One chamber.<br>Two gas paths.<br><em>Everything measured</em>.
+      </h2>
+      <div>
+        <p class="lede reveal d1">
+          Air enters through a CO₂ sensor at the intake and a second at the exhaust — so the reactor reports its own efficiency in real time. Between the two, a diaphragm pump drives filtered air through an air stone at the base of the culture, where the bubbles mix and deliver dissolved CO₂ to the algae.
+        </p>
+        <p class="reveal d2">
+          On the exhaust side, a protective mesh keeps algae inside; a PTFE membrane blocks micro-droplets; silica desiccant dries the air before it reaches the CO₂ and O₂ sensors downstream. Lighting, pH, temperature and humidity are monitored continuously. An ESP32 microcontroller coordinates everything and streams to a companion phone app over Bluetooth.
+        </p>
+      </div>
+    </div>
+
+    <div class="system-layout">
+      <div class="system-diagram-wrap reveal">
+        <svg class="system-diagram" viewBox="0 0 420 480" xmlns="http://www.w3.org/2000/svg" aria-labelledby="sdtitle sddesc" role="img">
+          <title id="sdtitle">GRO-BOT airflow schematic</title>
+          <desc id="sddesc">Airflow diagram showing intake CO₂ sensor, air pump, flow monitor, main chamber with algae culture, PTFE filter, desiccant, and exhaust O₂ and CO₂ sensors.</desc>
+
+          <!-- Arrowhead defs -->
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="sd-arrow" />
+            </marker>
+            <marker id="arrowA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="sd-arrow active" />
+            </marker>
+          </defs>
+
+          <!-- Intake row -->
+          <g class="sd-node">
+            <rect x="15" y="30" width="85" height="46" rx="2" />
+            <text x="57.5" y="48">INTAKE</text>
+            <text x="57.5" y="62">CO₂ SENSOR</text>
+          </g>
+          <path class="sd-path active" d="M 100 53 L 130 53" marker-end="url(#arrowA)" />
+
+          <g class="sd-node">
+            <rect x="130" y="30" width="70" height="46" rx="2" />
+            <text x="165" y="48">AIR</text>
+            <text x="165" y="62">PUMP</text>
+          </g>
+          <path class="sd-path active" d="M 200 53 L 230 53" marker-end="url(#arrowA)" />
+
+          <g class="sd-node">
+            <rect x="230" y="30" width="85" height="46" rx="2" />
+            <text x="272.5" y="48">FLOW</text>
+            <text x="272.5" y="62">MONITOR</text>
+          </g>
+          <path class="sd-path active" d="M 272.5 76 L 272.5 130" marker-end="url(#arrowA)" />
+
+          <!-- Main chamber -->
+          <g class="sd-node chamber">
+            <rect x="150" y="130" width="140" height="200" rx="4" />
+            <text x="220" y="160" style="font-size: 11px;">MAIN CHAMBER</text>
+            <text x="220" y="176">Chlorella vulgaris</text>
+            <text x="220" y="312">AIR STONE</text>
+
+            <!-- Bubbles animated -->
+            <circle cx="195" cy="290" r="3" class="sd-bubble" />
+            <circle cx="215" cy="290" r="2.5" class="sd-bubble" style="animation-delay: 0.6s" />
+            <circle cx="235" cy="290" r="3" class="sd-bubble" style="animation-delay: 1.2s" />
+            <circle cx="205" cy="290" r="2" class="sd-bubble" style="animation-delay: 1.8s" />
+            <circle cx="225" cy="290" r="2.5" class="sd-bubble" style="animation-delay: 2.4s" />
+
+            <!-- Water line -->
+            <line x1="160" y1="210" x2="280" y2="210" stroke="var(--biolum)" stroke-width="0.8" opacity="0.5" />
+          </g>
+
+          <!-- LED panels flanking -->
+          <rect x="115" y="150" width="8" height="160" fill="rgba(255, 230, 100, 0.15)" stroke="rgba(255, 230, 100, 0.5)" stroke-width="1" />
+          <rect x="317" y="150" width="8" height="160" fill="rgba(255, 230, 100, 0.15)" stroke="rgba(255, 230, 100, 0.5)" stroke-width="1" />
+          <text x="100" y="235" class="sd-node" style="fill: rgba(255, 230, 100, 0.7); font-size: 8px; text-anchor: middle;" transform="rotate(-90 100 235)">LED</text>
+          <text x="340" y="235" class="sd-node" style="fill: rgba(255, 230, 100, 0.7); font-size: 8px; text-anchor: middle;" transform="rotate(90 340 235)">LED</text>
+
+          <!-- Exhaust line exits chamber top -->
+          <path class="sd-path active" d="M 170 130 L 170 100 L 60 100 L 60 370" marker-end="url(#arrowA)" />
+
+          <!-- Exhaust row -->
+          <g class="sd-node">
+            <rect x="20" y="370" width="80" height="46" rx="2" />
+            <text x="60" y="388">PTFE</text>
+            <text x="60" y="402">FILTER</text>
+          </g>
+          <path class="sd-path active" d="M 100 393 L 130 393" marker-end="url(#arrowA)" />
+
+          <g class="sd-node">
+            <rect x="130" y="370" width="80" height="46" rx="2" />
+            <text x="170" y="388">DESICCANT</text>
+            <text x="170" y="402">(SILICA)</text>
+          </g>
+          <path class="sd-path active" d="M 210 393 L 240 393" marker-end="url(#arrowA)" />
+
+          <g class="sd-node">
+            <rect x="240" y="370" width="70" height="46" rx="2" />
+            <text x="275" y="388">O₂</text>
+            <text x="275" y="402">SENSOR</text>
+          </g>
+          <path class="sd-path active" d="M 310 393 L 340 393" marker-end="url(#arrowA)" />
+
+          <g class="sd-node">
+            <rect x="340" y="370" width="70" height="46" rx="2" />
+            <text x="375" y="388">CO₂</text>
+            <text x="375" y="402">SENSOR</text>
+          </g>
+          <path class="sd-path active" d="M 375 416 L 375 445" marker-end="url(#arrowA)" />
+
+          <text x="375" y="462" class="sd-node" style="font-size: 9px; fill: var(--biolum);">AIR OUT</text>
+
+          <!-- Intake label at far left -->
+          <text x="10" y="53" class="sd-node" style="font-size: 9px; fill: var(--biolum); text-anchor: start;">IN →</text>
+        </svg>
+      </div>
+
+      <div class="system-legend">
+        <div class="leg reveal d1">
+          <h4><span class="tag">AIR</span> Intake & Delivery</h4>
+          <p>A CO₂ sensor reads the incoming room air. The diaphragm pump pushes that air through a check valve and a filter before an air stone diffuses it into the culture as fine bubbles.</p>
+        </div>
+        <div class="leg reveal d2">
+          <h4><span class="tag">BIO</span> Culture Chamber</h4>
+          <p>A clear acrylic vessel — roughly one liter — holds the <em>Chlorella vulgaris</em> suspension. Flanking LED panels supply photosynthetically active radiation on a programmable day/night cycle.</p>
+        </div>
+        <div class="leg reveal d3">
+          <h4><span class="tag">OUT</span> Exhaust & Sensing</h4>
+          <p>Outgoing air is filtered, dried, then measured for both O₂ and CO₂. The difference between intake and exhaust readings is the reactor's live capture rate — the headline number the product exposes.</p>
+        </div>
+        <div class="leg reveal d4">
+          <h4><span class="tag">CTL</span> Control Layer</h4>
+          <p>An ESP32 microcontroller aggregates all sensor streams, drives the pump and LEDs on schedules, and pushes data over Bluetooth to a companion app. Total power draw is logged at the wall plug.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PROCESS TIMELINE ========== -->
+<section class="process" id="process">
+  <div class="wrap">
+    <div class="section-label">03 / Process & Iteration</div>
+
+    <div class="process-header">
+      <h2 class="reveal">
+        From sketch<br>to <em>living</em> system.
+      </h2>
+      <p class="lede reveal d1">
+        Eight weeks, three phases, one algae culture that had to stay alive throughout. The core design changed several times as we calibrated what the reactor should measure, what it should show, and how much of the complexity should be visible to a user opening a phone app.
+      </p>
+    </div>
+
+    <div class="timeline">
+      <div class="t-item reveal">
+        <div class="t-meta">Phase 01 · Weeks 1–2</div>
+        <h4>Research & Design</h4>
+        <p>Literature review on <em>C. vulgaris</em> cultivation; benchmarking against AlgenAir Aerium and AlGreen VAYU; selection of bubble-column architecture over flat-panel; finalized system diagram and bill of materials.</p>
+      </div>
+      <div class="t-item reveal">
+        <div class="t-meta">Phase 02 · Weeks 3–4</div>
+        <h4>System Assembly</h4>
+        <p>Lighting rig, aeration loop, and sensor suite built out and calibrated in parallel. Baseline culture inoculated in sterile medium. First full-system assembly achieved end of week 4.</p>
+      </div>
+      <div class="t-item reveal active">
+        <div class="t-meta">Phase 03 · Weeks 5–7 · Current</div>
+        <h4>Experimental Runs</h4>
+        <p>14-day continuous runs under controlled conditions. Sensor streams logged at minute resolution. Growth monitored via optical density, time-lapse video, and pH trajectory.</p>
+      </div>
+      <div class="t-item reveal">
+        <div class="t-meta">Phase 04 · Week 7–8</div>
+        <h4>Benchmarking & Reporting</h4>
+        <p>Quantitative comparison against reference direct-air-capture systems. Power-per-gram-CO₂ analysis. Final technical report and presentation.</p>
+      </div>
+      <div class="t-item reveal">
+        <div class="t-meta">Future</div>
+        <h4>Scale, Harvest, Distribute</h4>
+        <p>Harvesting schedule and nutrient replenishment cycle. Open-source DIY guide with bill of materials and assembly instructions. Exploration of biomass reuse — compost, pigment extraction, bioplastic feedstock.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== OUTCOMES ========== -->
+<section class="outcomes" id="outcomes">
+  <div class="wrap">
+    <div class="section-label">04 / Outcomes</div>
+    <h2 class="reveal">The numbers<br>that <em>mattered</em>.</h2>
+    <p class="lede reveal d1" style="margin-top: 1.5rem; max-width: 60ch;">
+      Design targets set at the project start, tracked against measured performance over successive runs. Figures represent specification targets; experimental validation is ongoing at time of writing.
+    </p>
+
+    <div class="outcomes-grid">
+      <div class="outcome reveal">
+        <span class="num"><em>15</em><span class="unit">%</span></span>
+        <span class="l">CO₂ Removal</span>
+        <p>Minimum target reduction between intake and exhaust CO₂ readings at baseline indoor concentration.</p>
+      </div>
+      <div class="outcome reveal d1">
+        <span class="num"><em>0.3</em><span class="unit">g/L/day</span></span>
+        <span class="l">Biomass Yield</span>
+        <p>Target productivity of <em>Chlorella vulgaris</em> under our LED lighting regime and nutrient schedule.</p>
+      </div>
+      <div class="outcome reveal d2">
+        <span class="num"><em>14</em><span class="unit">days</span></span>
+        <span class="l">Autonomy</span>
+        <p>Continuous runtime without human intervention after initial setup — the baseline experimental window.</p>
+      </div>
+      <div class="outcome reveal d3">
+        <span class="num">$<em>250</em>–<em>400</em></span>
+        <span class="l">BOM Cost</span>
+        <p>Target total bill-of-materials including sensors, microcontroller, lighting, chamber, and pump subsystem.</p>
+      </div>
+    </div>
+
+    <div class="comparison">
+      <div class="comp-side">
+        <span class="comp-l">To offset one human (~1 kg CO₂ / day)</span>
+        <span class="comp-n"><em>~500</em> L</span>
+        <h4>Of Chlorella culture</h4>
+        <p>Approximately 2–3 bathtubs worth of active algae culture. GRO-BOT at one liter handles a fraction of daily human output — but at a scale that fits on a desk.</p>
+      </div>
+      <div class="comp-side alt">
+        <span class="comp-l">Equivalent natural offset</span>
+        <span class="comp-n"><em>7–8</em> Neem trees</span>
+        <h4>Or 175–200 m² of canopy</h4>
+        <p>A mature Neem absorbs ~137 g CO₂/day. Trees remain the long-horizon solution — but they do not fit indoors, do not report their own performance, and do not arrive within a week.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== GALLERY ========== -->
+<section class="gallery" id="gallery">
+  <div class="wrap">
+    <div class="section-label">05 / Gallery</div>
+    <h2 class="reveal">In <em>process</em>.</h2>
+
+    <div class="gallery-grid">
+      <figure class="g-item tall ratio-photo reveal">
+        <img class="g-media" src="images/02_prototype.png" alt="Prototype photobioreactor on the bench: glass jar with green Chlorella culture under twin LED light panels, beakers and tubing visible.">
+        <figcaption class="g-caption">
+          <span class="n">Fig. 01 · Prototype</span>
+          <span class="t">Bench-top reactor under full LED illumination</span>
+        </figcaption>
+      </figure>
+
+      <figure class="g-item wide contain reveal d1">
+        <img class="g-media" src="images/03_overview.png" alt="Annotated overview diagram showing the bioreactor jar at center, flanked by LED panels, with electronics, sensor enclosure, filter and desiccant chamber on the left, and air flow monitor, air pump, power monitoring plug, camera, and phone app on the right.">
+        <figcaption class="g-caption">
+          <span class="n">Fig. 02 · System overview</span>
+          <span class="t">Spatial layout of all subsystems</span>
+        </figcaption>
+      </figure>
+
+      <figure class="g-item wide contain reveal d2">
+        <img class="g-media" src="images/04_electronics.png" alt="Electronic components diagram: sensing group (input CO2, exhaust CO2, exhaust O2, air flow monitor, camera) wired to an Arduino ESP32 microcontroller, which drives controls (LCD touch screen, LED lights, air pump) and communicates over Bluetooth with the phone app.">
+        <figcaption class="g-caption">
+          <span class="n">Fig. 03 · Electronics</span>
+          <span class="t">Sensing, control, and the ESP32 controller</span>
+        </figcaption>
+      </figure>
+
+      <figure class="g-item full contain ratio-wide reveal">
+        <img class="g-media" src="images/01_airflow_diagram.jpg" alt="Schematic airflow diagram in three rows: intake row with CO2 sensor, air pump, flow monitor and inlet; the main chamber with Chlorella vulgaris and bubble column; exhaust row with PTFE filter, desiccant, O2 and CO2 sensors.">
+        <figcaption class="g-caption">
+          <span class="n">Fig. 04 · Airflow schematic</span>
+          <span class="t">Intake, chamber, exhaust — with capture-rate equation</span>
+        </figcaption>
+      </figure>
+
+      <figure class="g-item full contain ratio-banner reveal d1">
+        <img class="g-media" src="images/05_airflow_components.png" alt="Airflow diagram with photographs of each physical component in sequence: input CO2 sensor, air pump, air flow monitor, main algae chamber, then exhaust path through PTFE filter, desiccant, exhaust CO2 sensor, exhaust O2 sensor.">
+        <figcaption class="g-caption">
+          <span class="n">Fig. 05 · Components in flow</span>
+          <span class="t">Each part of the air path, photographed and arrayed</span>
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CREDITS ========== -->
+<section class="credits" id="credits">
+  <div class="wrap">
+    <div class="section-label">06 / Credits</div>
+
+    <div class="concept-intro" style="margin-bottom: 0;">
+      <h2 class="reveal">
+        The <em>team</em>.
+      </h2>
+      <p class="lede reveal d1">
+        GRO-BOT is the work of four graduate and undergraduate students across Carnegie Mellon's Electrical & Computer Engineering, Biomedical Engineering, and Energy Science, Technology & Policy programs — developed over Spring 2026 for the course 18-360/760 Design Quest: AgTech.
+      </p>
+    </div>
+
+    <div class="team-grid">
+      <div class="member reveal">
+        <div class="role">Lead Tinkerer · Fabrication</div>
+        <h4>Marina Wang</h4>
+        <p>Electrical & Computer Engineering, Biomedical Engineering. Leads mechanical design and physical fabrication of the reactor vessel and supporting components.</p>
+      </div>
+      <div class="member reveal d1">
+        <div class="role">Culture Curator · Instrumentation</div>
+        <h4>Sida Cheng</h4>
+        <p>Electrical & Computer Engineering. Leads sensing and control systems — instrument integration, calibration, and firmware architecture.</p>
+      </div>
+      <div class="member reveal d2">
+        <div class="role">Adventurer & Technician · Coordination</div>
+        <h4>Pranav Bhosale</h4>
+        <p>Energy Science, Technology & Policy. Leads project coordination, data pipeline, and experimental design at the intersection of climate tech and social impact.</p>
+      </div>
+      <div class="member reveal d3">
+        <div class="role">Systems & Integration</div>
+        <h4>Vidhi Challani</h4>
+        <p>Electrical & Computer Engineering. Contributes to systems integration, instrumentation, and the broader sensing-to-control pipeline that ties hardware to the companion app.</p>
+      </div>
+    </div>
+
+    <div class="footline">
+      <div>© 2026 · Carnegie Mellon University · 18-360/760 Design Quest: AgTech</div>
+      <div>
+        <a href="https://algae-timeline.tiiny.site/" target="_blank" rel="noopener">Material Lineage Timeline ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ---------- NAV: shrink-on-scroll + mobile toggle ---------- */
+const nav = document.querySelector('.nav');
+const navToggle = document.querySelector('.nav-toggle');
+const navLinks = document.getElementById('navLinks');
+
+const onScroll = () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+};
+window.addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+navToggle.addEventListener('click', () => {
+  const open = navLinks.classList.toggle('open');
+  navToggle.classList.toggle('open', open);
+  navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+// Close menu on link tap (mobile)
+navLinks.addEventListener('click', e => {
+  if (e.target.tagName === 'A') {
+    navLinks.classList.remove('open');
+    navToggle.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }
+});
+
+/* ---------- REVEAL: IntersectionObserver for scroll-triggered fades ---------- */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('in');
+      io.unobserve(entry.target);  // one-time reveal
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
