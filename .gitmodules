@@ -1,0 +1,6 @@
+[submodule "gro-bot-esp32"]
+	path = gro-bot-esp32
+	url = https://github.com/stanley50z/gro-bot-esp32.git
+[submodule "AgTech-App"]
+	path = AgTech-App
+	url = https://github.com/vchallans/AgTech-App.git
