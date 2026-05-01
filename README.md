@@ -34,4 +34,4 @@ git submodule update --init --recursive
 
 The website is deployed with GitHub Pages from the `main` branch using the workflow in `.github/workflows/pages.yml`.
 
-The ESP32 firmware repository is private, so the Pages workflow checks out this repository without recursively cloning submodules. That keeps the public website deploy independent from private firmware access.
+The Pages workflow checks out this repository without recursively cloning submodules because the deployed site only needs the static website files. Clone with `--recurse-submodules` when you want the linked firmware and app source locally.
